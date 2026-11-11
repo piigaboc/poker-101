@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>โป๊กเกอร์ 101 — ฝึกดูหน้าไพ่และคิดคะแนน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f5f7; --card:#fff; --text:#1d1d1f; --muted:#6e6e73; --line:#e4e4e8;
+  --accent:#4fae86; --accent-soft:#e6f4ed; --accent-dark:#2f7f5e;
+  --red:#d2534f; --bad:#d2534f; --bad-soft:#fbecec;
+  --head:'Prompt',system-ui,sans-serif; --body:'Sarabun',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.5}
+h1,h2,h3,.num,button{font-family:var(--head)}
+h1{font-size:24px;margin:0}
+h2{font-size:20px;margin:0 0 8px}
+p{margin:0 0 12px}
+.wrap{max-width:960px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+header small{display:block;color:var(--muted);font-family:var(--body);font-size:16px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--text);padding:12px 20px;border-radius:12px;font-size:16px;font-weight:500;cursor:pointer;transition:transform .15s,box-shadow .15s,background .15s}
+.btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.small{padding:8px 12px;font-size:12px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.tab{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 8px;font-size:16px;font-weight:500;cursor:pointer;color:var(--muted);transition:transform .15s}
+.tab:hover{transform:translateY(-2px)}
+.tab.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-dark)}
+.panel{background:var(--card);border-radius:16px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.panel.enter{animation:fade .3s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.stat{background:var(--bg);border-radius:12px;padding:12px;text-align:center}
+.stat .num{font-size:32px;font-weight:700;line-height:1.25}
+.stat span{font-size:12px;color:var(--muted)}
+.stat.hl .num{color:var(--accent-dark)}
+.muted{color:var(--muted)}
+
+/* ไพ่ */
+.cards{display:grid;gap:8px;margin:16px 0}
+.cards.five{grid-template-columns:repeat(5,minmax(0,96px));justify-content:center}
+.cards.eight{grid-template-columns:repeat(8,minmax(0,1fr))}
+.pc{aspect-ratio:5/7;background:#fff;border:1px solid var(--line);border-radius:12px;position:relative;display:flex;align-items:center;justify-content:center;color:var(--text);box-shadow:0 2px 4px rgba(0,0,0,.06);transition:transform .15s,box-shadow .15s,border-color .15s,opacity .2s;padding:0;font-family:var(--head)}
+.pc.red{color:var(--red)}
+.pc .r{position:absolute;top:4px;left:8px;font-size:20px;font-weight:700}
+.pc .s{font-size:32px}
+button.pc{cursor:pointer}
+button.pc:hover{transform:translateY(-4px);box-shadow:0 8px 16px rgba(0,0,0,.1)}
+.pc.sel{transform:translateY(-12px)!important;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 8px 16px rgba(0,0,0,.1)}
+.pc.fresh{animation:fade .3s ease}
+.pc.score{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.pc.dim{opacity:.35}
+.pc.mini{width:36px;border-radius:8px;display:inline-flex;flex-direction:column;box-shadow:none}
+.pc.mini .r{position:static;font-size:12px;line-height:1}
+.pc.mini .s{font-size:12px;line-height:1}
+.minis{display:flex;gap:4px;flex-wrap:wrap}
+
+/* ตัวเลือกคำตอบ */
+.choices{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:16px 0}
+.choice{text-align:left}
+.choice b{display:block;font-size:20px}
+.choice.ok{background:var(--accent-soft);border-color:var(--accent);opacity:1}
+.choice.no{background:var(--bad-soft);border-color:var(--bad);opacity:1}
+.explain{border-radius:12px;padding:16px;margin-bottom:16px;animation:fade .3s ease;background:var(--accent-soft)}
+.explain.bad{background:var(--bad-soft)}
+.explain h3{margin:0 0 4px;font-size:16px}
+.formula{font-family:var(--head);font-size:24px;font-weight:600;margin:8px 0}
+.formula em{font-style:normal;color:var(--accent-dark)}
+.base{display:inline-block;background:var(--bg);border-radius:8px;padding:4px 12px;font-family:var(--head)}
+
+/* โหมดเล่นจริง */
+.preview{display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--bg);border-radius:12px;padding:16px;min-height:96px;flex-wrap:wrap}
+.preview .name{font-family:var(--head);font-size:20px;font-weight:600}
+.preview .big{font-family:var(--head);font-size:32px;font-weight:700}
+.preview .big em{font-style:normal;color:var(--accent-dark)}
+.bar{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:16px}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .5s ease}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.actions .sp{flex:1}
+.last{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+
+/* dialog */
+dialog{border:none;border-radius:16px;padding:0;width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 32px);box-shadow:0 16px 48px rgba(0,0,0,.2);color:var(--text)}
+dialog[open]{display:flex;flex-direction:column;animation:fade .2s ease}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+.dhead,.dfoot{padding:16px 24px;flex:none}
+.dhead{border-bottom:1px solid var(--line)}
+.dhead h2{margin:0}
+.dfoot{border-top:1px solid var(--line);text-align:right}
+.dbody{padding:16px 24px;overflow:auto}
+.dbody.center{text-align:center}
+.dbody .huge{font-family:var(--head);font-size:48px;font-weight:700;color:var(--accent-dark);line-height:1.25}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-family:var(--head);font-size:12px;color:var(--muted);font-weight:500}
+td .num{font-weight:600;white-space:nowrap}
+td small{color:var(--muted);display:block}
+.tips{margin:16px 0 0;padding-left:20px}
+.tips li{margin-bottom:8px}
+
+@media(max-width:640px){
+  .panel{padding:16px}
+  .cards.eight{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 8px}
+  .cards.five{gap:4px}
+  .pc .r{font-size:16px;left:4px}
+  .pc .s{font-size:24px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .tab{font-size:12px}
+  .hide-m{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>โป๊กเกอร์ 101 <small>ฝึกดูหน้าไพ่และคิดคะแนน สำหรับมือใหม่</small></h1>
+    <button class="btn" id="openGuide">📖 ตารางหน้าไพ่</button>
+  </header>
+
+  <div class="tabs">
+    <button class="tab" data-mode="name">1 · ทายหน้าไพ่</button>
+    <button class="tab" data-mode="score">2 · คิดคะแนน</button>
+    <button class="tab" data-mode="play">3 · เล่นจริง</button>
+  </div>
+
+  <main id="main"></main>
+</div>
+
+<dialog id="guide">
+  <div class="dhead"><h2>ตารางหน้าไพ่และวิธีคิดคะแนน</h2></div>
+  <div class="dbody">
+    <p><b>สูตร:</b> (Chips พื้นฐาน + แต้มไพ่ที่นับคะแนน) × Mult<br>
+    <b>แต้มไพ่:</b> 2–10 ได้ตามเลข · J Q K ได้ 10 · A ได้ 11</p>
+    <table>
+      <thead><tr><th>หน้าไพ่</th><th>ตัวอย่าง</th><th>Chips × Mult</th></tr></thead>
+      <tbody id="guideRows"></tbody>
+    </table>
+    <ul class="tips">
+      <li><b>นับแต้มเฉพาะไพ่ที่ประกอบเป็นหน้าไพ่</b> — เล่นคู่ K พร้อมไพ่อื่นอีก 3 ใบ ไพ่ 3 ใบนั้นไม่ได้บวก Chips แต่ช่วยระบายไพ่ที่ไม่ต้องการออกจากมือโดยไม่เสียสิทธิ์ทิ้งไพ่</li>
+      <li><b>Mult สำคัญกว่า Chips</b> เพราะเป็นตัวคูณ — คู่ K ได้ 30 × 2 = 60 แต่ถ้า Mult เพิ่มอีก 4 จะเป็น 30 × 6 = 180 หรือสามเท่า</li>
+      <li><b>ไม่ต้องจำทั้งตาราง</b> — ในโหมดเล่นจริง เลือกไพ่แล้วเกมจะบอกชื่อหน้าไพ่และคะแนนให้ก่อนกดเล่น</li>
+    </ul>
+  </div>
+  <div class="dfoot"><button class="btn primary" data-close>เข้าใจแล้ว</button></div>
+</dialog>
+
+<dialog id="msg">
+  <div class="dhead"><h2 id="msgTitle"></h2></div>
+  <div class="dbody center" id="msgBody"></div>
+  <div class="dfoot"><button class="btn primary" id="msgBtn"></button></div>
+</dialog>
+
+<script>
+// ---------- ข้อมูลพื้นฐาน ----------
+const SUITS = [
+  {id:'s', sym:'♠', th:'โพดำ', red:false},
+  {id:'h', sym:'♥', th:'โพแดง', red:true},
+  {id:'d', sym:'♦', th:'ข้าวหลามตัด', red:true},
+  {id:'c', sym:'♣', th:'ดอกจิก', red:false},
+];
+const SUIT = Object.fromEntries(SUITS.map(s => [s.id, s]));
+const HANDS = [
+  {id:'high',  name:'High Card',       th:'ไพ่สูง',      chips:5,   mult:1, desc:'ไม่เข้าชุดอะไรเลย นับใบสูงสุดใบเดียว', ex:'As'},
+  {id:'pair',  name:'Pair',            th:'คู่',          chips:10,  mult:2, desc:'เลขเหมือนกัน 2 ใบ', ex:'Ks Kh'},
+  {id:'two',   name:'Two Pair',        th:'สองคู่',       chips:20,  mult:2, desc:'คู่ 2 ชุด', ex:'Ks Kh 7d 7c'},
+  {id:'three', name:'Three of a Kind', th:'ตอง',         chips:30,  mult:3, desc:'เลขเหมือนกัน 3 ใบ', ex:'9s 9h 9d'},
+  {id:'str',   name:'Straight',        th:'สเตรท',       chips:30,  mult:4, desc:'เลขเรียงกัน 5 ใบ ดอกอะไรก็ได้', ex:'5s 6h 7d 8c 9s'},
+  {id:'flush', name:'Flush',           th:'ฟลัช',        chips:35,  mult:4, desc:'ดอกเดียวกัน 5 ใบ เลขอะไรก็ได้', ex:'Ah Kh 9h 6h 3h'},
+  {id:'full',  name:'Full House',      th:'ฟูลเฮาส์',     chips:40,  mult:4, desc:'ตอง + คู่', ex:'9s 9h 9d Kc Ks'},
+  {id:'four',  name:'Four of a Kind',  th:'โฟร์การ์ด',    chips:60,  mult:7, desc:'เลขเหมือนกัน 4 ใบ', ex:'Js Jh Jd Jc'},
+  {id:'sf',    name:'Straight Flush',  th:'สเตรทฟลัช',   chips:100, mult:8, desc:'เรียงกัน 5 ใบและดอกเดียวกัน', ex:'5s 6s 7s 8s 9s'},
+];
+const HAND = Object.fromEntries(HANDS.map(h => [h.id, h]));
+
+const label = r => ({11:'J',12:'Q',13:'K',14:'A'}[r] || String(r));
+const chipOf = r => r === 14 ? 11 : Math.min(r, 10);
+const card = (r, s) => ({r, s, id: r + s});
+const parse = str => str.split(' ').map(t => card({J:11,Q:12,K:13,A:14}[t.slice(0,-1)] || +t.slice(0,-1), t.slice(-1)));
+const rnd = n => Math.floor(Math.random() * n);
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const sum = a => a.reduce((x, y) => x + y, 0);
+const $ = sel => document.querySelector(sel);
+
+// ---------- ตัดสินหน้าไพ่ ----------
+function evaluate(cards) {
+  if (!cards.length) return null;
+  const byRank = {};
+  cards.forEach(c => (byRank[c.r] = byRank[c.r] || []).push(c));
+  const g = Object.values(byRank).sort((a, b) => b.length - a.length || b[0].r - a[0].r);
+  const five = cards.length === 5;
+  const flush = five && cards.every(c => c.s === cards[0].s);
+  let straight = false;
+  if (five && g.length === 5) {
+    const rs = cards.map(c => c.r).sort((a, b) => a - b);
+    straight = rs[4] - rs[0] === 4 || rs.join() === '2,3,4,5,14';
+  }
+  const out = (id, scoring) => {
+    const hand = HAND[id], cardChips = sum(scoring.map(c => chipOf(c.r)));
+    return {hand, scoring, cardChips, chips: hand.chips + cardChips, total: (hand.chips + cardChips) * hand.mult};
+  };
+  const n0 = g[0].length, n1 = g[1] ? g[1].length : 0;
+  if (flush && straight) return out('sf', cards);
+  if (n0 === 4) return out('four', g[0]);
+  if (n0 === 3 && n1 === 2) return out('full', cards);
+  if (flush) return out('flush', cards);
+  if (straight) return out('str', cards);
+  if (n0 === 3) return out('three', g[0]);
+  if (n0 === 2 && n1 === 2) return out('two', g[0].concat(g[1]));
+  if (n0 === 2) return out('pair', g[0]);
+  return out('high', g[0]);
+}
+
+// สุ่มไพ่ 5 ใบให้ได้หน้าไพ่ที่ต้องการ
+function deal(type) {
+  for (;;) {
+    const R = shuffle([2,3,4,5,6,7,8,9,10,11,12,13,14]);
+    const S = () => shuffle(['s','h','d','c']);
+    const any = () => 'shdc'[rnd(4)];
+    const same = (r, n) => S().slice(0, n).map(s => card(r, s));
+    let cs;
+    if (type === 'pair') cs = [...same(R[0], 2), card(R[1], any()), card(R[2], any()), card(R[3], any())];
+    else if (type === 'two') cs = [...same(R[0], 2), ...same(R[1], 2), card(R[2], any())];
+    else if (type === 'three') cs = [...same(R[0], 3), card(R[1], any()), card(R[2], any())];
+    else if (type === 'full') cs = [...same(R[0], 3), ...same(R[1], 2)];
+    else if (type === 'four') cs = [...same(R[0], 4), card(R[1], any())];
+    else if (type === 'str' || type === 'sf') {
+      const start = 1 + rnd(10), one = any();
+      cs = [0,1,2,3,4].map(i => card(start + i === 1 ? 14 : start + i, type === 'sf' ? one : any()));
+    } else if (type === 'flush') { const one = any(); cs = R.slice(0, 5).map(r => card(r, one)); }
+    else cs = R.slice(0, 5).map(r => card(r, any()));
+    if (evaluate(cs).hand.id === type) return shuffle(cs);
+  }
+}
+
+// ---------- วาดไพ่ ----------
+function cardHTML(c, cls = '', tag = 'div') {
+  const s = SUIT[c.s];
+  return `<${tag} class="pc ${s.red ? 'red' : ''} ${cls}" data-id="${c.id}" aria-label="${label(c.r)} ${s.th}"><span class="r">${label(c.r)}</span><span class="s">${s.sym}</span></${tag}>`;
+}
+const minis = (cards, scoring) => `<div class="minis">${cards.map(c => cardHTML(c, 'mini' + (scoring && !scoring.includes(c) ? ' dim' : ''))).join('')}</div>`;
+const handName = h => `${h.name} <span class="muted">(${h.th})</span>`;
+function breakdown(ev) {
+  const parts = ev.scoring.map(c => chipOf(c.r)).join(' + ');
+  return `<div class="formula">(${ev.hand.chips} + ${ev.cardChips}) × ${ev.hand.mult} = <em>${ev.total}</em></div>
+    <div>Chips พื้นฐาน ${ev.hand.chips} · แต้มไพ่ที่นับ ${parts}${ev.scoring.length > 1 ? ' = ' + ev.cardChips : ''} · Mult ${ev.hand.mult}</div>`;
+}
+
+// ---------- สถิติ quiz ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('poker101.' + k); return v === null ? d : +v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('poker101.' + k, v); } catch (e) {} },
+};
+const quiz = {right: 0, total: 0, streak: 0, best: store.get('bestStreak', 0)};
+function statsHTML() {
+  return `<div class="stats">
+    <div class="stat hl"><div class="num">${quiz.right}</div><span>ตอบถูก</span></div>
+    <div class="stat"><div class="num">${quiz.total}</div><span>ทั้งหมด</span></div>
+    <div class="stat"><div class="num">${quiz.streak}</div><span>ถูกติดกัน</span></div>
+    <div class="stat"><div class="num">${quiz.best}</div><span>สถิติดีที่สุด</span></div>
+  </div>`;
+}
+function record(ok) {
+  quiz.total++;
+  if (ok) { quiz.right++; quiz.streak++; if (quiz.streak > quiz.best) { quiz.best = quiz.streak; store.set('bestStreak', quiz.best); } }
+  else quiz.streak = 0;
+}
+
+// ---------- โหมด 1 & 2: quiz ----------
+let q = null;
+function newQuestion(mode) {
+  const type = HANDS[rnd(HANDS.length)].id;
+  const cards = deal(type), ev = evaluate(cards);
+  let choices;
+  if (mode === 'name') {
+    choices = shuffle([ev.hand, ...shuffle(HANDS.filter(h => h !== ev.hand)).slice(0, 3)])
+      .sort((a, b) => HANDS.indexOf(a) - HANDS.indexOf(b)).map(h => ({val: h.id, html: `<b>${h.name}</b>${h.th}`}));
+  } else {
+    const h = ev.hand, all = sum(cards.map(c => chipOf(c.r)));
+    const wrong = new Set([(h.chips + all) * h.mult, ev.cardChips * h.mult, h.chips + ev.cardChips + h.mult, h.chips * h.mult + ev.cardChips]);
+    wrong.delete(ev.total);
+    let list = shuffle([...wrong]).slice(0, 3);
+    for (let k = 1; list.length < 3; k++) { const v = ev.total + k * h.mult * (k % 2 ? 1 : -1) * 2; if (v > 0 && v !== ev.total && !list.includes(v)) list.push(v); }
+    choices = [ev.total, ...list].sort((a, b) => a - b).map(v => ({val: v, html: `<b>${v}</b>คะแนน`}));
+  }
+  q = {mode, cards, ev, choices, answer: mode === 'name' ? ev.hand.id : ev.total, picked: null};
+}
+function renderQuiz() {
+  const {mode, cards, ev, choices, answer, picked} = q, done = picked !== null, ok = picked === answer;
+  const ask = mode === 'name'
+    ? `<h2>ไพ่ 5 ใบนี้คือหน้าไพ่อะไร?</h2><p class="muted">ดูว่ามีเลขซ้ำ เลขเรียง หรือดอกเดียวกันหรือไม่</p>`
+    : `<h2>เล่นไพ่ชุดนี้ได้กี่คะแนน?</h2><p><span class="base">${ev.hand.name} · ${ev.hand.chips} Chips × ${ev.hand.mult} Mult</span></p>
+       <p class="muted">สูตร: (Chips พื้นฐาน + แต้มไพ่ที่นับคะแนน) × Mult — 2–10 ตามเลข, J Q K = 10, A = 11</p>`;
+  let explain = '';
+  if (done) {
+    const scoreNote = ev.scoring.length < 5 ? `<div>ไพ่ที่จางลง ${5 - ev.scoring.length} ใบไม่ได้ประกอบเป็นหน้าไพ่ จึง<b>ไม่นับแต้ม</b></div>` : '';
+    explain = `<div class="explain ${ok ? '' : 'bad'}">
+      <h3>${ok ? '✅ ถูกต้อง!' : '❌ ยังไม่ใช่'} — ${handName(ev.hand)}</h3>
+      <div>${ev.hand.desc}</div>${breakdown(ev)}${scoreNote}
+    </div>`;
+  }
+  $('#main').innerHTML = `<section class="panel">${statsHTML()}${ask}
+    <div class="cards five">${cards.map(c => cardHTML(c, done ? (ev.scoring.includes(c) ? 'score' : 'dim') : '')).join('')}</div>
+    <div class="choices">${choices.map(c => `<button class="btn choice ${done && c.val === answer ? 'ok' : done && c.val === picked ? 'no' : ''}" data-val="${c.val}" ${done ? 'disabled' : ''}>${c.html}</button>`).join('')}</div>
+    ${explain}
+    ${done ? '<div class="actions"><span class="sp"></span><button class="btn primary" id="next">ข้อต่อไป →</button></div>' : ''}
+  </section>`;
+  document.querySelectorAll('.choice').forEach(b => b.onclick = () => {
+    q.picked = mode === 'name' ? b.dataset.val : +b.dataset.val;
+    record(q.picked === q.answer);
+    renderQuiz();
+  });
+  if (done) { $('#next').onclick = () => { newQuestion(mode); renderQuiz(); }; $('#next').focus(); }
+}
+
+// ---------- โหมด 3: เล่นจริง ----------
+const HAND_SIZE = 8;
+let g = null;
+function newRound(round) {
+  const deck = shuffle(SUITS.flatMap(s => [2,3,4,5,6,7,8,9,10,11,12,13,14].map(r => card(r, s.id))));
+  g = {round, target: 300 + (round - 1) * 50, score: 0, hands: 4, discards: 3, deck, hand: [], sel: [], sort: g ? g.sort : 'rank', last: null};
+  draw();
+}
+function draw() {
+  while (g.hand.length < HAND_SIZE && g.deck.length) { const c = g.deck.pop(); c.fresh = true; g.hand.push(c); }
+  sortHand();
+}
+function sortHand() {
+  const so = 'shdc';
+  g.hand.sort(g.sort === 'rank' ? (a, b) => b.r - a.r || so.indexOf(a.s) - so.indexOf(b.s) : (a, b) => so.indexOf(a.s) - so.indexOf(b.s) || b.r - a.r);
+}
+function removeSelected() { g.hand = g.hand.filter(c => !g.sel.includes(c)); g.sel = []; draw(); }
+function renderPlay(animateFrom) {
+  const ev = evaluate(g.sel);
+  const pv = ev
+    ? `<div><div class="name">${handName(ev.hand)}</div><div class="muted">Chips พื้นฐาน ${ev.hand.chips} + แต้มไพ่ ${ev.cardChips} · นับ ${ev.scoring.length} จาก ${g.sel.length} ใบ</div></div>
+       <div class="big">${ev.chips} × ${ev.hand.mult} = <em>${ev.total}</em></div>`
+    : `<div class="muted">เลือกไพ่ 1–5 ใบ เกมจะบอกชื่อหน้าไพ่และคะแนนให้ก่อนกดเล่น</div>`;
+  const last = g.last ? `<div class="last"><b>ตาล่าสุด:</b> ${handName(g.last.ev.hand)} ได้ <b>${g.last.ev.total}</b> คะแนน
+      <div class="actions" style="margin-top:8px">${minis(g.last.cards, g.last.ev.scoring)}<span class="muted">(${g.last.ev.hand.chips} + ${g.last.ev.cardChips}) × ${g.last.ev.hand.mult}${g.last.ev.scoring.length < g.last.cards.length ? ' · ใบที่จางไม่นับแต้ม' : ''}</span></div></div>` : '';
+  $('#main').innerHTML = `<section class="panel">
+    <div class="stats">
+      <div class="stat hl"><div class="num" id="scoreNum">${g.score}</div><span>คะแนน / เป้า ${g.target}</span></div>
+      <div class="stat"><div class="num">${g.round}</div><span>รอบที่</span></div>
+      <div class="stat"><div class="num">${g.hands}</div><span>เล่นได้อีก (ตา)</span></div>
+      <div class="stat"><div class="num">${g.discards}</div><span>ทิ้งไพ่ได้อีก</span></div>
+    </div>
+    <div class="bar"><i id="barFill" style="width:${Math.min(100, (animateFrom ?? g.score) / g.target * 100)}%"></i></div>
+    <div class="preview">${pv}</div>
+    <div class="cards eight">${g.hand.map(c => cardHTML(c, (g.sel.includes(c) ? 'sel' : '') + (c.fresh ? ' fresh' : ''), 'button')).join('')}</div>
+    <div class="actions">
+      <button class="btn small" id="sortBtn">เรียงตาม${g.sort === 'rank' ? 'ดอก' : 'เลข'}</button>
+      <span class="muted hide-m">เหลือในกอง ${g.deck.length} ใบ</span>
+      <span class="sp"></span>
+      <button class="btn" id="discardBtn" ${g.sel.length && g.discards ? '' : 'disabled'}>ทิ้งไพ่</button>
+      <button class="btn primary" id="playBtn" ${g.sel.length ? '' : 'disabled'}>เล่นไพ่${ev ? ' +' + ev.total : ''}</button>
+    </div>
+    ${last}
+  </section>`;
+  g.hand.forEach(c => c.fresh = false);
+  if (animateFrom != null) {
+    countUp($('#scoreNum'), animateFrom, g.score);
+    requestAnimationFrame(() => $('#barFill').style.width = Math.min(100, g.score / g.target * 100) + '%');
+  }
+  document.querySelectorAll('button.pc').forEach(b => b.onclick = () => {
+    const c = g.hand.find(x => x.id === b.dataset.id), i = g.sel.indexOf(c);
+    if (i >= 0) g.sel.splice(i, 1); else if (g.sel.length < 5) g.sel.push(c);
+    renderPlay();
+  });
+  $('#sortBtn').onclick = () => { g.sort = g.sort === 'rank' ? 'suit' : 'rank'; sortHand(); renderPlay(); };
+  $('#discardBtn').onclick = () => { g.discards--; removeSelected(); renderPlay(); };
+  $('#playBtn').onclick = () => {
+    const before = g.score;
+    g.last = {ev, cards: g.sel.slice()};
+    g.score += ev.total; g.hands--;
+    removeSelected();
+    renderPlay(before);
+    if (g.score >= g.target) {
+      const bestRound = Math.max(store.get('bestRound', 0), g.round); store.set('bestRound', bestRound);
+      showMsg('🎉 ผ่านรอบที่ ' + g.round, `<div class="huge">${g.score}</div><p>เป้า ${g.target} คะแนน · เหลืออีก ${g.hands} ตา</p><p class="muted">รอบถัดไปเป้าเพิ่มเป็น ${g.target + 50} คะแนน · ผ่านไกลสุดรอบที่ ${bestRound}</p>`,
+        'ไปรอบถัดไป', () => { newRound(g.round + 1); renderPlay(); });
+    } else if (g.hands === 0) {
+      showMsg('หมดตาเล่นแล้ว', `<div class="huge">${g.score}</div><p>ขาดอีก ${g.target - g.score} คะแนนจากเป้า ${g.target}</p><p class="muted">เคล็ดลับ: ใช้สิทธิ์ทิ้งไพ่เพื่อลุ้นหน้าไพ่ที่ Mult สูง เช่น Straight, Flush หรือ Full House</p>`,
+        'เริ่มใหม่', () => { newRound(1); renderPlay(); });
+    }
+  };
+}
+function countUp(el, from, to) {
+  const t0 = performance.now(), dur = 500;
+  (function step(t) {
+    const p = Math.min(1, (t - t0) / dur);
+    el.textContent = Math.round(from + (to - from) * p);
+    if (p < 1) requestAnimationFrame(step);
+  })(t0);
+}
+
+// ---------- dialog ----------
+function showMsg(title, body, btn, cb) {
+  $('#msgTitle').textContent = title; $('#msgBody').innerHTML = body; $('#msgBtn').textContent = btn;
+  const d = $('#msg');
+  $('#msgBtn').onclick = () => d.close();
+  d.onclose = cb;   // ปิดด้วยปุ่มหรือ Esc ก็ไปต่อเหมือนกัน
+  d.showModal();
+}
+$('#guideRows').innerHTML = HANDS.map(h => `<tr>
+  <td><b>${h.name}</b><small>${h.th} — ${h.desc}</small></td>
+  <td>${minis(parse(h.ex))}</td>
+  <td><span class="num">${h.chips} × ${h.mult}</span></td></tr>`).join('');
+$('#openGuide').onclick = () => $('#guide').showModal();
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
+document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d && d.id === 'guide') d.close(); }));
+
+// ---------- สลับโหมด ----------
+function setMode(mode) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.mode === mode));
+  try { history.replaceState(null, '', '#' + mode); } catch (e) {}
+  if (mode === 'play') { if (!g) newRound(1); renderPlay(); }
+  else { if (!q || q.mode !== mode || q.picked !== null) newQuestion(mode); renderQuiz(); }
+  $('.panel').classList.add('enter');   // fade เฉพาะตอนสลับโหมด ไม่ใช่ทุกครั้งที่คลิก
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => setMode(t.dataset.mode));
+setMode(['name', 'score', 'play'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'name');
+</script>
+</body>
+</html>
